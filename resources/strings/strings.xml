@@ -1,0 +1,11 @@
+<strings xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+    <string id="AppName">日历</string>
+    <string id="prompt">日历</string>
+    <string id="menu_mode_solar">公历</string>
+    <string id="menu_mode_lunar">农历</string>
+    <string id="menu_mode_both">同时显示</string>
+    <string id="menu_lang_zh_hans">简体中文</string>
+    <string id="menu_lang_zh_hant">繁體中文</string>
+    <string id="menu_lang_en">English</string>
+    <string id="menu_goto_today">回到今天</string>
+</strings>

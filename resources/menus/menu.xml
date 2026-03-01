@@ -1,0 +1,9 @@
+<menu id="MainMenu" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="https://developer.garmin.com/downloads/connect-iq/resources.xsd">
+    <menu-item id="menu_mode_solar" label="@Strings.menu_mode_solar" />
+    <menu-item id="menu_mode_lunar" label="@Strings.menu_mode_lunar" />
+    <menu-item id="menu_mode_both" label="@Strings.menu_mode_both" />
+    <menu-item id="menu_lang_zh_hans" label="@Strings.menu_lang_zh_hans" />
+    <menu-item id="menu_lang_zh_hant" label="@Strings.menu_lang_zh_hant" />
+    <menu-item id="menu_lang_en" label="@Strings.menu_lang_en" />
+    <menu-item id="menu_goto_today" label="@Strings.menu_goto_today" />
+</menu>
