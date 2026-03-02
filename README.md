@@ -2,6 +2,8 @@
 
 English | [简体中文](README.zh-CN.md)
 
+ConnectIQ: <https://apps.garmin.com/apps/81d408e1-3fd8-4627-af3a-a3e6a0a65d81>
+
 佳明手表 fr255 日历，可以显示农历。
 
 A Garmin Connect IQ watch app calendar with:

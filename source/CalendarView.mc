@@ -5,6 +5,7 @@ import Toybox.System;
 import Toybox.Time;
 import Toybox.Time.Gregorian;
 import Toybox.WatchUi;
+import Toybox.Application.Storage;
 
 class CalendarView extends WatchUi.View {
 
@@ -34,7 +35,8 @@ class CalendarView extends WatchUi.View {
         _todayDay = toNumber(now.day);
 
         _displayMode = 0;
-        _languageMode = 0;
+        _languageMode = detectLanguageModeFromDevice();
+        loadPersistedSettings();
         _debugText = "Ready";
         _lunarCacheYear = -1;
         _lunarCacheMonth = -1;
@@ -56,10 +58,10 @@ class CalendarView extends WatchUi.View {
         var contentWidth = right - left;
 
         drawHeader(dc, left, contentWidth);
-        drawWeekHeader(dc, left, contentWidth, 44);
+        drawWeekHeader(dc, left, contentWidth, 34);
 
-        var gridTop = 58;
-        var gridBottom = height - 38;
+        var gridTop = 48;
+        var gridBottom = height - 30;
         drawCalendarGrid(dc, left, contentWidth, gridTop, gridBottom - gridTop);
 
         drawFooter(dc, left, contentWidth, height);
@@ -96,14 +98,10 @@ class CalendarView extends WatchUi.View {
     }
 
     function setDisplayMode(mode as Number) as Void {
-        if (mode < 0) {
-            mode = 0;
-        }
-        if (mode > 2) {
-            mode = 2;
-        }
+        mode = clampMode(mode);
 
         _displayMode = mode;
+        saveDisplayMode();
         _debugText = "Mode " + mode.toString();
         System.println("CalendarView: mode=" + mode.toString());
         WatchUi.requestUpdate();
@@ -122,14 +120,11 @@ class CalendarView extends WatchUi.View {
     }
 
     function setLanguageMode(mode as Number) as Void {
-        if (mode < 0) {
-            mode = 0;
-        }
-        if (mode > 2) {
-            mode = 2;
-        }
+        mode = clampMode(mode);
 
         _languageMode = mode;
+        saveLanguageMode();
+        invalidateLunarCache();
         _debugText = "Lang " + mode.toString();
         WatchUi.requestUpdate();
     }
@@ -158,24 +153,34 @@ class CalendarView extends WatchUi.View {
         var monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
         var monthIndex = normalizeMonth(_displayMonth) - 1;
         var title = monthNames[monthIndex] + " " + _displayYear.toString();
+        var titleX = left + (contentWidth / 2);
+        var titleY = 8;
         if (_languageMode == 0) {
-            title = _displayYear.toString() + "年" + _displayMonth.toString() + "月";
+            title = _displayYear.toString() + "." + _displayMonth.toString();
         } else if (_languageMode == 1) {
-            title = _displayYear.toString() + "年" + _displayMonth.toString() + "月";
+            title = _displayYear.toString() + "." + _displayMonth.toString();
         }
-        dc.drawText(left + (contentWidth / 2), 12, Graphics.FONT_MEDIUM, title, Graphics.TEXT_JUSTIFY_CENTER);
+
+        if (_languageMode == 2) {
+            dc.drawText(titleX, titleY, Graphics.FONT_SMALL, title, Graphics.TEXT_JUSTIFY_CENTER);
+            return;
+        }
+
+        var zhHeaderFont = getChineseVectorFont(16);
+        drawTextWithOptionalVector(dc, titleX, titleY, Graphics.FONT_SMALL, zhHeaderFont, title, Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     function drawWeekHeader(dc as Dc, left as Number, contentWidth as Number, y as Number) as Void {
         var weekNames = getWeekNames();
         var cellWidth = contentWidth / 7;
+        var weekFont = Graphics.FONT_XTINY;
 
         for (var i = 0; i < 7; i += 1) {
             var x = left + (i * cellWidth) + (cellWidth / 2);
-            dc.drawText(x, y, Graphics.FONT_XTINY, weekNames[i], Graphics.TEXT_JUSTIFY_CENTER);
+            dc.drawText(x, y, weekFont, weekNames[i], Graphics.TEXT_JUSTIFY_CENTER);
         }
 
-        dc.drawLine(left, y + 14, left + contentWidth, y + 14);
+        dc.drawLine(left, y + dc.getFontHeight(weekFont) + 1, left + contentWidth, y + dc.getFontHeight(weekFont) + 1);
     }
 
     function drawCalendarGrid(dc as Dc, left as Number, contentWidth as Number, top as Number, gridHeight as Number) as Void {
@@ -186,6 +191,13 @@ class CalendarView extends WatchUi.View {
         var totalDays = getDaysInMonth(_displayYear, month);
         var cellWidth = contentWidth / 7;
         var cellHeight = gridHeight / 6;
+        var solarFont = Graphics.FONT_XTINY;
+        var lunarFont = Graphics.FONT_XTINY;
+        var singleFont = Graphics.FONT_XTINY;
+        var zhCellFont = (_languageMode == 2) ? null : getChineseVectorFont(10);
+        var solarHeight = dc.getFontHeight(solarFont);
+        var lunarHeight = getFontHeightWithOptionalVector(dc, lunarFont, zhCellFont);
+        var singleHeight = getFontHeightWithOptionalVector(dc, singleFont, zhCellFont);
 
         var isLunarMode = (_displayMode == 1);
         var isBothMode = (_displayMode == 2);
@@ -216,21 +228,32 @@ class CalendarView extends WatchUi.View {
             }
 
             if (isBothMode) {
+                var bothTextTop = cellY + maxNumber(0, Math.floor((cellHeight - (solarHeight + lunarHeight)) / 2));
                 if (isToday) {
                     dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_WHITE);
                 }
-                dc.drawText(textX, cellY + 2, Graphics.FONT_XTINY, solarText, Graphics.TEXT_JUSTIFY_CENTER);
-                dc.drawText(textX, cellY + cellHeight - 10, Graphics.FONT_XTINY, lunarText, Graphics.TEXT_JUSTIFY_CENTER);
+                dc.drawText(textX, bothTextTop, solarFont, solarText, Graphics.TEXT_JUSTIFY_CENTER);
+                drawTextWithOptionalVector(
+                    dc,
+                    textX,
+                    bothTextTop + solarHeight,
+                    lunarFont,
+                    zhCellFont,
+                    lunarText,
+                    Graphics.TEXT_JUSTIFY_CENTER
+                );
             } else if (isLunarMode) {
+                var lunarY = cellY + maxNumber(0, Math.floor((cellHeight - singleHeight) / 2));
                 if (isToday) {
                     dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_WHITE);
                 }
-                dc.drawText(textX, cellY + 6, Graphics.FONT_XTINY, lunarText, Graphics.TEXT_JUSTIFY_CENTER);
+                drawTextWithOptionalVector(dc, textX, lunarY, singleFont, zhCellFont, lunarText, Graphics.TEXT_JUSTIFY_CENTER);
             } else {
+                var solarY = cellY + maxNumber(0, Math.floor((cellHeight - singleHeight) / 2));
                 if (isToday) {
                     dc.setColor(Graphics.COLOR_BLACK, Graphics.COLOR_WHITE);
                 }
-                dc.drawText(textX, cellY + 4, Graphics.FONT_TINY, solarText, Graphics.TEXT_JUSTIFY_CENTER);
+                dc.drawText(textX, solarY, singleFont, solarText, Graphics.TEXT_JUSTIFY_CENTER);
             }
 
             if (isToday) {
@@ -246,12 +269,12 @@ class CalendarView extends WatchUi.View {
             var lunar = solarToLunar(_todayYear, _todayMonth, _todayDay);
             footerText = footerLunarLabel() + " " + lunarMonthText(lunar[:month], lunar[:isLeap]) + lunarDayText(lunar[:day]);
         } else if (_displayMode == 2) {
-            footerText = footerBothLabel();
+            footerText = currentTimeText();
         } else {
             footerText = footerTodayLabel() + " " + _todayYear.toString() + "-" + pad2(_todayMonth) + "-" + pad2(_todayDay);
         }
 
-        dc.drawText(left + (contentWidth / 2), height - 32, Graphics.FONT_XTINY, footerText, Graphics.TEXT_JUSTIFY_CENTER);
+        dc.drawText(left + (contentWidth / 2), height - 24, Graphics.FONT_XTINY, footerText, Graphics.TEXT_JUSTIFY_CENTER);
     }
 
     function getWeekdaySun0(year as Number, month as Number, day as Number) as Number {
@@ -396,6 +419,12 @@ class CalendarView extends WatchUi.View {
         _lunarCacheYear = year;
         _lunarCacheMonth = month;
         System.println("CalendarView: lunar month cache built " + year.toString() + "-" + month.toString());
+    }
+
+    function invalidateLunarCache() as Void {
+        _lunarCacheYear = -1;
+        _lunarCacheMonth = -1;
+        _lunarDayTexts = [];
     }
 
     function daysFromCivil(year as Number, month as Number, day as Number) as Number {
@@ -552,6 +581,56 @@ class CalendarView extends WatchUi.View {
         return "同时";
     }
 
+    function currentTimeText() as String {
+        var now = Gregorian.info(Time.now(), Time.FORMAT_SHORT);
+        var hour = toNumber(now.hour);
+        var minute = toNumber(now.min);
+        return pad2(hour) + ":" + pad2(minute);
+    }
+
+    function detectLanguageModeFromDevice() as Number {
+        var settings = System.getDeviceSettings();
+        if (settings == null) {
+            return 0;
+        }
+
+        if (!(settings has :systemLanguage)) {
+            return 0;
+        }
+
+        var systemLanguage = settings.systemLanguage;
+
+        if (systemLanguage == System.LANGUAGE_CHT) {
+            return 1;
+        }
+
+        if (systemLanguage == System.LANGUAGE_ENG) {
+            return 2;
+        }
+
+        return 0;
+    }
+
+    function loadPersistedSettings() as Void {
+        var savedDisplay = Storage.getValue("display_mode");
+        if (savedDisplay instanceof Number) {
+            _displayMode = clampMode(savedDisplay as Number);
+        }
+
+        var savedLanguage = Storage.getValue("language_mode");
+        if (savedLanguage instanceof Number) {
+            _languageMode = clampMode(savedLanguage as Number);
+        }
+    }
+
+    function saveDisplayMode() as Void {
+        Storage.setValue("display_mode", _displayMode);
+    }
+
+    function saveLanguageMode() as Void {
+        Storage.setValue("language_mode", _languageMode);
+    }
+
     function lunarInfo(year as Number) as Number {
         var data = [
             0x04bd8,0x04ae0,0x0a570,0x054d5,0x0d260,0x0d950,0x16554,0x056a0,0x09ad0,0x055d2,
@@ -588,6 +667,67 @@ class CalendarView extends WatchUi.View {
             return "0" + v.toString();
         }
         return v.toString();
+    }
+
+    function maxNumber(a as Number, b as Number) as Number {
+        if (a > b) {
+            return a;
+        }
+        return b;
+    }
+
+    function clampMode(mode as Number) as Number {
+        if (mode < 0) {
+            return 0;
+        }
+        if (mode > 2) {
+            return 2;
+        }
+        return mode;
+    }
+
+    function getChineseVectorFont(size as Number) as Graphics.VectorFont? {
+        if (!(Graphics has :getVectorFont)) {
+            return null;
+        }
+
+        var faces = [
+            "Noto Sans CJK SC",
+            "NotoSansCJKsc-Regular",
+            "PingFang SC",
+            "Heiti SC",
+            "Source Han Sans SC",
+            "WenQuanYi Zen Hei",
+            "Droid Sans Fallback"
+        ];
+
+        if (_languageMode == 1) {
+            faces = [
+                "Noto Sans CJK TC",
+                "NotoSansCJKtc-Regular",
+                "PingFang TC",
+                "Heiti TC",
+                "Source Han Sans TC",
+                "Droid Sans Fallback"
+            ];
+        }
+
+        return Graphics.getVectorFont({:face => faces, :size => size});
+    }
+
+    function getFontHeightWithOptionalVector(dc as Dc, fallbackFont, vectorFont as Graphics.VectorFont?) as Number {
+        if (vectorFont != null) {
+            return dc.getFontHeight(vectorFont as Graphics.VectorFont);
+        }
+        return dc.getFontHeight(fallbackFont);
+    }
+
+    function drawTextWithOptionalVector(dc as Dc, x as Number, y as Number, fallbackFont, vectorFont as Graphics.VectorFont?, text as String, justify as Number) as Void {
+        if (vectorFont != null) {
+            dc.drawText(x, y, vectorFont as Graphics.VectorFont, text, justify);
+            return;
+        }
+        dc.drawText(x, y, fallbackFont, text, justify);
     }
 
     function toNumber(value as Object?) as Number {

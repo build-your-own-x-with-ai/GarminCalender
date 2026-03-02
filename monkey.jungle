@@ -1,1 +1,8 @@
 project.manifest = manifest.xml
+base.sourcePath = source
+base.resourcePath = resources
+base.personality = resources
+
+base.lang.eng = resources-eng
+base.lang.zhs = resources-zhs
+base.lang.zht = resources-zht

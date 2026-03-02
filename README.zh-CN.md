@@ -2,6 +2,8 @@
 
 [English](README.md) | 简体中文
 
+ConnectIQ: <https://apps.garmin.com/apps/81d408e1-3fd8-4627-af3a-a3e6a0a65d81>
+
 这是一个 Garmin Connect IQ 手表日历应用，支持：
 - 公历模式
 - 农历模式

@@ -14,17 +14,8 @@
             "Monkey C: Edit Products" - Lets you add or remove any product
         -->
         <iq:products>
-            <iq:product id="fenix5"/>
-            <iq:product id="fenix5s"/>
-            <iq:product id="fenix5x"/>
             <iq:product id="fenix7"/>
-            <iq:product id="fr230"/>
-            <iq:product id="fr235"/>
             <iq:product id="fr255"/>
-            <iq:product id="fr735xt"/>
-            <iq:product id="fr935"/>
-            <iq:product id="vivoactive3"/>
-            <iq:product id="vivoactive_hr"/>
         </iq:products>
         <!--
             Use "Monkey C: Edit Permissions" from the Visual Studio Code command
